@@ -211,7 +211,7 @@ lazy_static! {
   pub static ref CACHE_DIR: PathBuf = if cfg!(debug_assertions) {
       PathBuf::from(".cache")
   } else {
-      dirs::home_dir().unwrap().join(".dino/cache")
+      dirs::home_dir().unwrap().join(".ceno/cache")
   };
 }
 

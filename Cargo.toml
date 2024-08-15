@@ -1,5 +1,5 @@
 [workspace]
-members = ["bundler"]
+members = ["bundler", "ceno"]
 resolver = "2"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -11,4 +11,3 @@ serde_json = "1.0.117"
 tokio = { version = "1.37.0", features = ["rt", "rt-multi-thread", "macros"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
-
