@@ -8,6 +8,7 @@ anyhow = "1.0.86"
 askama = "0.12.1"
 blake3 = "1.5.1"
 bundler = { workspace = true }
+ceno-macros = { version = "0.1.0", path = "../ceno-macros" }
 clap = { version = "4.5.4", features = ["derive"] }
 dialoguer = { version = "0.11.0", features = [
   "completion",
@@ -20,6 +21,7 @@ git2 = { version = "0.19.0", default-features = false }
 glob = "0.3.1"
 notify = "6.1.1"
 notify-debouncer-mini = "0.4.1"
+rquickjs = { version = "0.6.2", features = ["full"] }
 tokio = { workspace = true }
 tokio-stream = { version = "0.1.15", features = ["sync"] }
 tracing = { workspace = true }
