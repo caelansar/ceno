@@ -1,6 +1,6 @@
 import { Req, Res } from './types';
 
-async function hello(req: Req): Res {
+async function hello(req: Req): Promise<Res> {
   return {
     status: 200,
     headers: {
