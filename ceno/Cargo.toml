@@ -6,9 +6,11 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.86"
 askama = "0.12.1"
+axum = { version = "0.7.5", features = ["http2", "query", "tracing"] }
 blake3 = "1.5.1"
 bundler = { workspace = true }
-ceno-macros = { version = "0.1.0", path = "../ceno-macros" }
+ceno-macros = { workspace = true }
+ceno-server = { workspace = true }
 clap = { version = "4.5.4", features = ["derive"] }
 dialoguer = { version = "0.11.0", features = [
   "completion",

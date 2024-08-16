@@ -1,11 +1,12 @@
-use crate::{CmdExector, Req, Res};
+use crate::CmdExector;
 use anyhow::Result;
 use askama::Template;
+use ceno_server::{Req, Res};
 use clap::Parser;
 use dialoguer::Input;
 use git2::Repository;
 use std::{fs, path::Path};
-use ts_rs::TS;
+use ts_rs::TS as _;
 
 #[derive(Debug, Parser)]
 pub struct InitOpts {}

@@ -1,30 +1,10 @@
 mod cli;
 mod utils;
 
-use ceno_macros::{FromJs, IntoJs};
 pub use cli::*;
 use enum_dispatch::enum_dispatch;
-use std::collections::HashMap;
-use ts_rs::TS;
 
 pub const BUILD_DIR: &str = ".build";
-
-#[derive(Debug, TS, IntoJs)]
-pub struct Req {
-    pub method: String,
-    pub url: String,
-    pub query: HashMap<String, String>,
-    pub params: HashMap<String, String>,
-    pub headers: HashMap<String, String>,
-    pub body: Option<String>,
-}
-
-#[derive(Debug, TS, FromJs)]
-pub struct Res {
-    pub status: u16,
-    pub headers: HashMap<String, String>,
-    pub body: Option<String>,
-}
 
 #[allow(async_fn_in_trait)]
 #[enum_dispatch]

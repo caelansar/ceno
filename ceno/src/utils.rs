@@ -4,7 +4,7 @@ use std::{collections::BTreeSet, fs::File, path::PathBuf};
 
 use crate::BUILD_DIR;
 
-// get all files with certain extension in a directory
+/// get all files with certain extension in a directory
 pub(crate) fn get_files_with_exts(dir: &str, exts: &[&str]) -> Result<BTreeSet<PathBuf>> {
     // glob all targets files and exclude BUILD_DIR
     let mut files = BTreeSet::new();
@@ -23,6 +23,7 @@ pub(crate) fn get_files_with_exts(dir: &str, exts: &[&str]) -> Result<BTreeSet<P
     Ok(files)
 }
 
+/// calculate target files hash via blake3
 pub(crate) fn calc_project_hash(dir: &str) -> Result<String> {
     calc_hash_for_files(dir, &["ts", "js", "json"], 16)
 }

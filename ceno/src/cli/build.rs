@@ -19,9 +19,10 @@ impl CmdExector for BuildOpts {
     }
 }
 
-fn build_project(dir: &str) -> anyhow::Result<String> {
+pub(crate) fn build_project(dir: &str) -> anyhow::Result<String> {
     let hash = calc_project_hash(dir)?;
     fs::create_dir_all(BUILD_DIR)?;
+
     let filename = format!("{}/{}.js", BUILD_DIR, hash);
     let config = format!("{}/{}.yml", BUILD_DIR, hash);
     let dst = Path::new(&filename);
