@@ -23,9 +23,14 @@ git2 = { version = "0.19.0", default-features = false }
 glob = "0.3.1"
 notify = "6.1.1"
 notify-debouncer-mini = "0.4.1"
+opentelemetry = "0.24.0"
+opentelemetry-otlp = "0.17.0"
+opentelemetry-stdout = "0.5.0"
+opentelemetry_sdk = { version = "0.24.1", features = ["rt-tokio"] }
 rquickjs = { version = "0.6.2", features = ["full"] }
 tokio = { workspace = true }
 tokio-stream = { version = "0.1.15", features = ["sync"] }
 tracing = { workspace = true }
+tracing-opentelemetry = "0.25.0"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 ts-rs = "9.0.1"

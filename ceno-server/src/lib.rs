@@ -54,20 +54,25 @@ pub async fn start_server(port: u16, routers: Vec<TenentRouter>) -> Result<()> {
     Ok(())
 }
 
-#[allow(unused)]
+#[instrument(skip(state))]
 async fn handler(
     State(state): State<AppState>,
     parts: Parts,
-    Host(mut host): Host,
+    Host(host): Host,
     Query(query): Query<HashMap<String, String>>,
     body: Option<Bytes>,
 ) -> Result<impl IntoResponse, AppError> {
     let router = get_router_by_host(host, state)?;
     let matched = router.match_it(parts.method.clone(), parts.uri.path())?;
+    info!(%matched.value, "router matched");
+
     let req = assemble_req(&matched, &parts, query, body)?;
     let handler = matched.value;
     let worker = JsWorker::try_new(&router.code)?;
+
     let res = worker.run(handler, req)?;
+    info!(?res, "run JsWorker");
+
     Ok(Response::from(res))
 }
 

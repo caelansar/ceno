@@ -4,6 +4,7 @@ use arc_swap::ArcSwap;
 use axum::http::Method;
 use matchit::{Match, Router};
 use std::{ops::Deref, sync::Arc};
+use tracing::instrument;
 
 #[derive(Clone)]
 pub struct SwappableAppRouter {
@@ -76,6 +77,7 @@ impl SwappableAppRouter {
 }
 
 impl AppRouter {
+    #[instrument(skip(self))]
     pub fn match_it<'m, 'p>(
         &'m self,
         method: Method,

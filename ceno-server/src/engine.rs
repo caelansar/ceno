@@ -4,12 +4,12 @@ use anyhow::Result;
 use axum::{body::Body, response::Response};
 use ceno_macros::{FromJs, IntoJs};
 use rquickjs::{Context, Function, Object, Promise, Runtime};
+use tracing::{info_span, instrument};
 use ts_rs::TS;
 use typed_builder::TypedBuilder;
 
 #[allow(unused)]
 pub struct JsWorker {
-    rt: Runtime,
     ctx: Context,
 }
 
@@ -55,24 +55,34 @@ fn print(msg: String) {
 }
 
 impl JsWorker {
+    #[instrument]
     pub fn try_new(module: &str) -> Result<Self> {
+        let span = info_span!("init runtime");
+        let _enter = span.enter();
+
         let rt = Runtime::new()?;
         let ctx = Context::full(&rt)?;
+
+        drop(_enter);
+
+        let span = info_span!("runtime ctx with");
+        let _enter = span.enter();
 
         ctx.with(|ctx| {
             let global = ctx.globals();
             let ret: Object = ctx.eval(module)?;
             global.set("handlers", ret)?;
             // setup print function
-            let fun = Function::new(ctx.clone(), print)?.with_name("print")?;
-            global.set("print", fun)?;
+            let fun = Function::new(ctx.clone(), print)?.with_name("rust_print")?;
+            global.set("rust_print", fun)?;
 
             Ok::<_, anyhow::Error>(())
         })?;
 
-        Ok(Self { rt, ctx })
+        Ok(Self { ctx })
     }
 
+    #[instrument(skip(self))]
     pub fn run(&self, name: &str, req: Req) -> anyhow::Result<Res> {
         self.ctx.with(|ctx| {
             let global = ctx.globals();

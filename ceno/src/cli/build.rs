@@ -21,6 +21,8 @@ impl CmdExector for BuildOpts {
 
 pub(crate) fn build_project(dir: &str) -> anyhow::Result<String> {
     let hash = calc_project_hash(dir)?;
+
+    fs::remove_dir_all(BUILD_DIR)?;
     fs::create_dir_all(BUILD_DIR)?;
 
     let filename = format!("{}/{}.js", BUILD_DIR, hash);
