@@ -61,6 +61,7 @@ fn init_project(name: &str, path: &Path) -> Result<()> {
     s.push('\n');
     s.push_str(&Res::decl());
     s.push('\n');
+    s.push_str("export function rust_print(msg: string): void;\n");
     s.push_str("export {Req, Res}\n");
     fs::write(path.join("types.d.ts"), s)?;
 
