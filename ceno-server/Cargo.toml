@@ -15,7 +15,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 serde_yaml = "0.9.34"
 thiserror = "1.0.61"
-tokio = { workspace = true }
+tokio = { workspace = true, features = ["signal"] }
 tower = "0.4.13"
 tracing = { workspace = true }
 ts-rs = "9.0.1"

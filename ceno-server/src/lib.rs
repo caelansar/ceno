@@ -1,6 +1,7 @@
 mod config;
 mod engine;
 mod error;
+mod pool;
 mod router;
 
 use anyhow::Result;
@@ -13,19 +14,21 @@ use axum::{
     Router,
 };
 use dashmap::DashMap;
-use engine::JsWorker;
 use matchit::Match;
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 use tokio::net::TcpListener;
-use tracing::{info, instrument};
+use tokio::signal;
+use tracing::{info, info_span, instrument, Instrument};
 
 pub use config::*;
 pub use engine::{Req, Res};
 pub use error::*;
+pub use pool::*;
 pub use router::*;
 
 #[derive(Clone)]
 pub struct AppState {
+    pools: DashMap<String, Arc<ThreadPool>>,
     routers: DashMap<String, SwappableAppRouter>,
 }
 
@@ -50,8 +53,34 @@ pub async fn start_server(port: u16, routers: Vec<TenentRouter>) -> Result<()> {
         .route("/*path", any(handler))
         .with_state(state);
 
-    axum::serve(listener, app.into_make_service()).await?;
+    axum::serve(listener, app.into_make_service())
+        .with_graceful_shutdown(shutdown_signal())
+        .await?;
     Ok(())
+}
+
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {info!("shutdown server gracefully")},
+        _ = terminate => {},
+    }
 }
 
 #[instrument(skip(state))]
@@ -62,23 +91,36 @@ async fn handler(
     Query(query): Query<HashMap<String, String>>,
     body: Option<Bytes>,
 ) -> Result<impl IntoResponse, AppError> {
-    let router = get_router_by_host(host, state)?;
+    let (router, pool) = get_router_by_host(host, state)?;
     let matched = router.match_it(parts.method.clone(), parts.uri.path())?;
     info!(%matched.value, "router matched");
 
     let req = assemble_req(&matched, &parts, query, body)?;
     let handler = matched.value;
-    let worker = JsWorker::try_new(&router.code)?;
+    // let worker = JsWorker::try_new(&router.code)?;
+    //
+    // let res = worker.run(handler, req)?;
+    // info!(?res, "run JsWorker");
 
-    let res = worker.run(handler, req)?;
-    info!(?res, "run JsWorker");
+    let res = pool
+        .execute(handler, req)
+        .instrument(info_span!("wait response asynchronously").or_current())
+        .await
+        .map_err(|_| AppError::HostNotFound("".to_string()))?;
+    info!(?res, "pool execute");
 
     Ok(Response::from(res))
 }
 
 impl AppState {
     pub fn new(routers: DashMap<String, SwappableAppRouter>) -> Self {
-        Self { routers }
+        let pools = DashMap::new();
+        for data in routers.iter() {
+            let (host, router) = data.pair();
+            let inner = ThreadPool::new(4, &router.load().code);
+            pools.insert(host.to_string(), Arc::new(inner));
+        }
+        Self { routers, pools }
     }
 }
 
@@ -92,7 +134,10 @@ impl TenentRouter {
 }
 
 #[instrument(skip(state))]
-fn get_router_by_host(mut host: String, state: AppState) -> Result<AppRouter, AppError> {
+fn get_router_by_host(
+    mut host: String,
+    state: AppState,
+) -> Result<(AppRouter, Arc<ThreadPool>), AppError> {
     let _ = host.split_off(host.find(':').unwrap_or(host.len()));
 
     info!(%host, "split host");
@@ -100,10 +145,16 @@ fn get_router_by_host(mut host: String, state: AppState) -> Result<AppRouter, Ap
     let router: AppRouter = state
         .routers
         .get(&host)
-        .ok_or(AppError::HostNotFound(host))?
+        .ok_or(AppError::HostNotFound(host.clone()))?
         .load();
 
-    Ok(router)
+    let pool = state
+        .pools
+        .get(&host)
+        .ok_or(AppError::HostNotFound(host))?
+        .clone();
+
+    Ok((router, pool))
 }
 
 fn assemble_req(
