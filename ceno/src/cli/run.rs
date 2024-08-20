@@ -16,10 +16,9 @@ use super::build::build_project;
 
 #[derive(Debug, Parser)]
 pub struct RunOpts {
-    // port to listen
-    #[arg(short, long, default_value = "5000")]
+    #[arg(short, long, default_value = "5000", help = "Port to listen")]
     pub port: u16,
-    #[arg(long, default_value_t = false)]
+    #[arg(long, default_value_t = false, help = "Enable opentelemetry")]
     pub otlp: bool,
 }
 
