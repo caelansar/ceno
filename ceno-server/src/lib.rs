@@ -1,6 +1,9 @@
+#![feature(impl_trait_in_assoc_type)]
+
 mod config;
 mod engine;
 mod error;
+mod middleware;
 mod pool;
 mod router;
 
@@ -15,10 +18,11 @@ use axum::{
 };
 use dashmap::DashMap;
 use matchit::Match;
+use middleware::ServerTimeLayer;
 use std::{collections::HashMap, sync::Arc};
 use tokio::net::TcpListener;
 use tokio::signal;
-use tracing::{info, info_span, instrument, Instrument};
+use tracing::{info, instrument, Instrument};
 
 pub use config::*;
 pub use engine::{Req, Res};
@@ -51,6 +55,7 @@ pub async fn start_server(port: u16, routers: Vec<TenentRouter>) -> Result<()> {
     let state = AppState::new(map);
     let app = Router::new()
         .route("/*path", any(handler))
+        .layer(ServerTimeLayer)
         .with_state(state);
 
     axum::serve(listener, app.into_make_service())
@@ -104,7 +109,7 @@ async fn handler(
 
     let res = pool
         .execute(handler, req)
-        .instrument(info_span!("wait response asynchronously").or_current())
+        .instrument(tracing::Span::current())
         .await
         .map_err(|_| AppError::HostNotFound("".to_string()))?;
     info!(?res, "pool execute");
