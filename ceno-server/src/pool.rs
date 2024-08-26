@@ -1,3 +1,4 @@
+use arc_swap::ArcSwap;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -68,9 +69,42 @@ enum Message {
     Terminate,
 }
 
+/// A `ThreadPool` struct representing a pool of worker threads.
+///
+/// - `workers`: A vector containing the `Worker` structs responsible for executing tasks.
+/// - `sender`: A sender channel used to send request to the worker threads.
 pub struct ThreadPool {
     workers: Vec<Worker>,
     sender: Sender<Message>,
+}
+
+/// `SwappableThreadPool` wraps around a `ThreadPool` using `ArcSwap`
+/// to allow atomic swapping of thread pools at runtime.
+///
+/// - `inner`: An `Arc`-wrapped `ArcSwap` holding the current `ThreadPool`.
+#[derive(Clone)]
+pub struct SwappableThreadPool {
+    inner: Arc<ArcSwap<ThreadPool>>,
+}
+
+impl SwappableThreadPool {
+    pub fn new(code: &str) -> Self {
+        let inner = ThreadPool::new(4, code);
+        Self {
+            inner: Arc::new(ArcSwap::from_pointee(inner)),
+        }
+    }
+
+    /// Swaps the current `ThreadPool` with a new one.
+    pub fn swap(&self, code: &str) {
+        let inner = ThreadPool::new(4, code);
+        self.inner.store(Arc::new(inner))
+    }
+
+    /// Loads the current `ThreadPool` being used.
+    pub fn load(&self) -> Arc<ThreadPool> {
+        self.inner.load_full()
+    }
 }
 
 impl ThreadPool {

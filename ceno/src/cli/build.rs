@@ -12,17 +12,19 @@ pub struct BuildOpts {}
 impl CmdExector for BuildOpts {
     async fn execute(self) -> anyhow::Result<()> {
         let cur_dir = env::current_dir()?.display().to_string();
-        let filename = build_project(&cur_dir)?;
+        let filename = build_project(&cur_dir, true)?;
         eprintln!("Build success: {}", filename);
 
         Ok(())
     }
 }
 
-pub(crate) fn build_project(dir: &str) -> anyhow::Result<String> {
+pub(crate) fn build_project(dir: &str, recrate: bool) -> anyhow::Result<String> {
     let hash = calc_project_hash(dir)?;
 
-    fs::remove_dir_all(BUILD_DIR)?;
+    if recrate {
+        fs::remove_dir_all(BUILD_DIR)?;
+    }
     fs::create_dir_all(BUILD_DIR)?;
 
     let filename = format!("{}/{}.js", BUILD_DIR, hash);

@@ -19,7 +19,7 @@ use axum::{
 use dashmap::DashMap;
 use matchit::Match;
 use middleware::ServerTimeLayer;
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 use tokio::net::TcpListener;
 use tokio::signal;
 use tracing::{info, instrument, Instrument};
@@ -32,7 +32,7 @@ pub use router::*;
 
 #[derive(Clone)]
 pub struct AppState {
-    pools: DashMap<String, Arc<ThreadPool>>,
+    pools: DashMap<String, SwappableThreadPool>,
     routers: DashMap<String, SwappableAppRouter>,
 }
 
@@ -42,17 +42,25 @@ pub struct TenentRouter {
     router: SwappableAppRouter,
 }
 
-pub async fn start_server(port: u16, routers: Vec<TenentRouter>) -> Result<()> {
+pub async fn start_server(
+    port: u16,
+    routers: Vec<TenentRouter>,
+    pools: Vec<(String, SwappableThreadPool)>,
+) -> Result<()> {
     let addr = format!("0.0.0.0:{port}");
     let listener = TcpListener::bind(addr).await?;
 
     info!("listening on {}", listener.local_addr()?);
 
     let map = DashMap::new();
+    let pool_map = DashMap::new();
     for TenentRouter { host, router } in routers {
         map.insert(host, router);
     }
-    let state = AppState::new(map);
+    for (host, pool) in pools {
+        pool_map.insert(host, pool);
+    }
+    let state = AppState::new(map, pool_map);
     let app = Router::new()
         .route("/*path", any(handler))
         .layer(ServerTimeLayer)
@@ -108,6 +116,7 @@ async fn handler(
     // info!(?res, "run JsWorker");
 
     let res = pool
+        .load()
         .execute(handler, req)
         .instrument(tracing::Span::current())
         .await
@@ -118,13 +127,10 @@ async fn handler(
 }
 
 impl AppState {
-    pub fn new(routers: DashMap<String, SwappableAppRouter>) -> Self {
-        let pools = DashMap::new();
-        for data in routers.iter() {
-            let (host, router) = data.pair();
-            let inner = ThreadPool::new(4, &router.load().code);
-            pools.insert(host.to_string(), Arc::new(inner));
-        }
+    pub fn new(
+        routers: DashMap<String, SwappableAppRouter>,
+        pools: DashMap<String, SwappableThreadPool>,
+    ) -> Self {
         Self { routers, pools }
     }
 }
@@ -142,7 +148,7 @@ impl TenentRouter {
 fn get_router_by_host(
     mut host: String,
     state: AppState,
-) -> Result<(AppRouter, Arc<ThreadPool>), AppError> {
+) -> Result<(AppRouter, SwappableThreadPool), AppError> {
     let _ = host.split_off(host.find(':').unwrap_or(host.len()));
 
     info!(%host, "split host");
