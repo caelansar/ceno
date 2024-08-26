@@ -4,7 +4,7 @@ use ceno_server::{
     start_server, ProjectConfig, SwappableAppRouter, SwappableThreadPool, TenentRouter,
 };
 use clap::Parser;
-use notify::{FsEventWatcher, RecursiveMode};
+use notify::{RecommendedWatcher, RecursiveMode};
 use notify_debouncer_mini::{new_debouncer, DebounceEventResult, DebouncedEvent, Debouncer};
 use opentelemetry::trace::TracerProvider as _;
 use opentelemetry::KeyValue;
@@ -76,7 +76,7 @@ impl SwapWatcher for CompositedWatcher {
 }
 
 struct FsWatcher {
-    _debouncer: ManuallyDrop<Debouncer<FsEventWatcher>>,
+    _debouncer: ManuallyDrop<Debouncer<RecommendedWatcher>>,
     rx: Receiver<Vec<DebouncedEvent>>,
 }
 
