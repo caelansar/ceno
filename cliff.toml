@@ -10,7 +10,6 @@ All notable changes to this project will be documented in this file. See [conven
 # template for the changelog body
 # https://keats.github.io/tera/docs/#introduction
 body = """
----
 {% if version %}\
     ## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
 {% else %}\
@@ -22,14 +21,14 @@ body = """
     | filter(attribute="scope")
     | sort(attribute="scope") %}
         - **({{commit.scope}})**{% if commit.breaking %} [**breaking**]{% endif %} \
-            {{ commit.message|trim }} - ([{{ commit.id | truncate(length=7, end="") }}]({{ commit.id }})) - {{ commit.author.name }}
+            {{ commit.message|trim }} - ([{{ commit.id | truncate(length=7, end="") }}](https://github.com/caelansar/ceno/commit/{{ commit.id }})) - {{ commit.author.name }}
     {%- endfor -%}
     {% raw %}\n{% endraw %}\
     {%- for commit in commits %}
         {%- if commit.scope -%}
         {% else -%}
             - {% if commit.breaking %} [**breaking**]{% endif %}\
-                {{ commit.message|trim }} - ([{{ commit.id | truncate(length=7, end="") }}]({{ commit.id }})) - {{ commit.author.name }}
+                {{ commit.message|trim }} - ([{{ commit.id | truncate(length=7, end="") }}](https://github.com/caelansar/ceno/commit/{{ commit.id }})) - {{ commit.author.name }}
         {% endif -%}
     {% endfor -%}
 {% endfor %}\n
