@@ -85,7 +85,6 @@ impl FsWatcher {
         let (tx, rx) = channel(10);
 
         let mut debouncer = new_debouncer(MONITOR_INTERVAL, move |res: DebounceEventResult| {
-            println!("send {:?}", res);
             if let Ok(res) = res {
                 tx.blocking_send(res).unwrap();
             }
@@ -204,15 +203,24 @@ fn get_code_and_config() -> anyhow::Result<(String, ProjectConfig)> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use std::{pin::pin, str::FromStr};
-
     use tokio::sync::mpsc::channel;
 
-    use super::*;
+    #[allow(unused)]
+    async fn create_file(path: impl AsRef<Path>, name: &str) -> PathBuf {
+        let path = path.as_ref().join(name);
+        let _ = tokio::fs::File::create(&path).await;
+        path
+    }
 
     #[tokio::test]
-    async fn notifier_should_work() {
-        let fs_notify = FsWatcher::try_new(".").unwrap();
+    async fn notifier_should_work() -> anyhow::Result<()> {
+        let tempdir = tempfile::tempdir()?;
+        let path = tempdir.path().to_path_buf();
+        let path1 = path.clone();
+
+        let fs_notify = FsWatcher::try_new(path.clone())?;
 
         let (tx, rx) = channel(10);
 
@@ -224,15 +232,25 @@ mod tests {
             .unwrap();
         });
 
-        let mixed_notify = CompositedWatcher::new(fs_notify, rx);
+        let composited_notify = CompositedWatcher::new(fs_notify, rx);
 
-        let mut stream = mixed_notify.recv().unwrap();
+        let mut stream = composited_notify.recv()?;
+
+        let mut stream = pin!(stream);
 
         assert_eq!(
             Some(FileChangedEvent::new(
                 vec![PathBuf::from_str("aa").unwrap()]
             )),
-            pin!(stream).next().await
+            stream.next().await
         );
+
+        let files = stream.next().await.unwrap().files;
+        assert_eq!(1, files.len());
+
+        let file = files.first().unwrap();
+        assert!(file.to_str().unwrap().contains(path1.to_str().unwrap()));
+
+        Ok(())
     }
 }

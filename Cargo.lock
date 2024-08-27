@@ -498,6 +498,7 @@ dependencies = [
  "opentelemetry-stdout",
  "opentelemetry_sdk",
  "rquickjs",
+ "tempfile",
  "tokio",
  "tokio-stream",
  "tracing",
