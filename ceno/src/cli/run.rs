@@ -205,9 +205,8 @@ fn get_code_and_config() -> anyhow::Result<(String, ProjectConfig)> {
 mod tests {
     use super::*;
     use std::{pin::pin, str::FromStr};
-    use tokio::sync::mpsc::channel;
+    use tokio::{sync::mpsc::channel, time::sleep};
 
-    #[allow(unused)]
     async fn create_file(path: impl AsRef<Path>, name: &str) -> PathBuf {
         let path = path.as_ref().join(name);
         let _ = tokio::fs::File::create(&path).await;
@@ -223,6 +222,11 @@ mod tests {
         let fs_notify = FsWatcher::try_new(path.clone())?;
 
         let (tx, rx) = channel(10);
+
+        tokio::spawn(async move {
+            sleep(Duration::from_secs(1)).await;
+            create_file(path, "testfile").await;
+        });
 
         tokio::spawn(async move {
             tx.send(FileChangedEvent::new(
