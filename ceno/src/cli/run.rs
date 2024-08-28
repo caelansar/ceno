@@ -215,7 +215,11 @@ mod tests {
 
     #[tokio::test]
     async fn notifier_should_work() -> anyhow::Result<()> {
+        #[cfg(target_os = "macos")]
+        let tempdir = tempfile::tempdir_in("/private/tmp/")?;
+        #[cfg(not(target_os = "macos"))]
         let tempdir = tempfile::tempdir()?;
+
         let path = tempdir.path().to_path_buf();
         let path1 = path.clone();
 
@@ -249,11 +253,10 @@ mod tests {
             stream.next().await
         );
 
-        let files = stream.next().await.unwrap().files;
-        assert_eq!(1, files.len());
-
-        let file = files.first().unwrap();
-        assert!(file.to_str().unwrap().contains(path1.to_str().unwrap()));
+        assert_eq!(
+            Some(FileChangedEvent::new(vec![path1.join("testfile")])),
+            stream.next().await
+        );
 
         Ok(())
     }
