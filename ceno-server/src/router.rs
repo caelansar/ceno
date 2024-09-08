@@ -82,7 +82,7 @@ impl AppRouter {
         &'m self,
         method: Method,
         path: &'p str,
-    ) -> Result<Match<&str>, AppError>
+    ) -> Result<Match<'m, 'p, &'m str>, AppError>
     where
         'p: 'm,
     {
