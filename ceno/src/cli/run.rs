@@ -11,7 +11,6 @@ use opentelemetry::KeyValue;
 use opentelemetry_sdk::trace::Config;
 use opentelemetry_sdk::Resource;
 use std::fs;
-use std::mem::ManuallyDrop;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use tokio::sync::mpsc::{channel, Receiver};
@@ -76,7 +75,7 @@ impl SwapWatcher for CompositedWatcher {
 }
 
 struct FsWatcher {
-    _debouncer: ManuallyDrop<Debouncer<RecommendedWatcher>>,
+    debouncer: Option<Debouncer<RecommendedWatcher>>,
     rx: Receiver<Vec<DebouncedEvent>>,
 }
 
@@ -95,7 +94,7 @@ impl FsWatcher {
             .watch(path.as_ref(), RecursiveMode::Recursive)?;
 
         Ok(Self {
-            _debouncer: ManuallyDrop::new(debouncer),
+            debouncer: Some(debouncer),
             rx,
         })
     }
@@ -149,12 +148,14 @@ impl CmdExector for RunOpts {
         let router = SwappableAppRouter::try_new(&code, config.routes)?;
         let routers = vec![TenentRouter::new("localhost", router.clone())];
 
-        let notifier = FsWatcher::try_new(format!("./{}", BUILD_DIR))?;
+        let mut notifier = FsWatcher::try_new(format!("./{}", BUILD_DIR))?;
 
         let pool = SwappableThreadPool::new(&code);
         let pools = vec![("localhost".to_string(), pool.clone())];
 
         tokio::spawn(async move {
+            // take debouncer and drop it to stop watching files in the end of the async block
+            let _debouncer = notifier.debouncer.take();
             let stream = notifier.recv()?;
 
             handle_swap(router, pool, stream).await
@@ -240,7 +241,9 @@ mod tests {
             .unwrap();
         });
 
-        let composited_notify = CompositedWatcher::new(fs_notify, rx);
+        let mut composited_notify = CompositedWatcher::new(fs_notify, rx);
+
+        let _debouncer = composited_notify.fs.debouncer.take();
 
         let mut stream = composited_notify.recv()?;
 
